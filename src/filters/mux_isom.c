@@ -6265,7 +6265,7 @@ static GF_Err mp4_mux_start_fragment(GF_MP4MuxCtx *ctx, GF_FilterPacket *pck)
     while (gf_list_count(ctx->pending_id3_messages) > 0) {
         // FIXME: see gf_isom_write_styp
         GF_EventMessageBox* emsg = gf_list_pop_front(ctx->pending_id3_messages);
-//        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_start_fragment: inserting EMSG into MOOF in: %s pending: %d\n", ctx->seg_name, gf_list_count(ctx->pending_id3_messages)))
+        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_start_fragment: inserting EMSG with pts %lu into MOOF in: %s\n", emsg->presentation_time_delta, ctx->seg_name))
 
         if (!ctx->file->moof->emsgs) {
             ctx->file->moof->emsgs = gf_list_new();
