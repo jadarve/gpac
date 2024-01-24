@@ -1599,6 +1599,7 @@ static void gf_m2ts_process_pmt(GF_M2TS_Demuxer *ts, GF_M2TS_SECTION_ES *pmt, GF
 							pes->stream_type = GF_M2TS_METADATA_ID3_HLS;
 						}
 					} else if (metad->format_identifier == GF_M2TS_META_KLVA) {
+                        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("Found PES packet with KLVA metadata\n"))
 						/*ID3 with KLVA generic encoding (https://en.wikipedia.org/wiki/KLV)*/
 						if (pes) {
 							if (pes->metadata_descriptor)

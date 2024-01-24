@@ -412,6 +412,8 @@ typedef struct
 	Bool has_chap_tracks;
 
 	GF_List *ref_pcks;
+
+    GF_List *pending_id3_messages;
 } GF_MP4MuxCtx;
 
 static void mp4_mux_update_init_edit(GF_MP4MuxCtx *ctx, TrackWriter *tkw, u64 min_ts_service, Bool skip_adjust);
@@ -4018,6 +4020,7 @@ static GF_Err mp4_mux_done(GF_MP4MuxCtx *ctx, Bool is_final);
 
 static GF_Err mp4_mux_configure_pid(GF_Filter *filter, GF_FilterPid *pid, Bool is_remove)
 {
+    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_configure_pid\n"))
 	GF_MP4MuxCtx *ctx = gf_filter_get_udta(filter);
 
 	if (is_remove) {
@@ -6142,6 +6145,18 @@ static GF_Err mp4_mux_start_fragment(GF_MP4MuxCtx *ctx, GF_FilterPacket *pck)
 	if (ctx->ctrn) flags |= GF_ISOM_FRAG_USE_COMPACT;
 #endif
 
+//    if (gf_list_count(ctx->pending_id3_messages) > 0) {
+//        // FIXME: see gf_isom_write_styp
+//        GF_EventMessageBox* emsg = gf_list_pop_front(ctx->pending_id3_messages);
+//        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_start_fragment: inserting EMSG box tag in: %s\n", ctx->seg_name))
+//
+//        if (!ctx->file->emsgs) {
+//            ctx->file->emsgs = gf_list_new();
+//        }
+//
+//        gf_list_add(ctx->file->emsgs, emsg);
+//    }
+
 	e = gf_isom_start_fragment(ctx->file, flags);
 	if (e) {
 		GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[MP4Mux] Unable to start new fragment: %s\n", gf_error_to_string(e) ));
@@ -6206,6 +6221,59 @@ static GF_Err mp4_mux_start_fragment(GF_MP4MuxCtx *ctx, GF_FilterPacket *pck)
 	ctx->fragment_started = GF_TRUE;
 	ctx->insert_tfdt = GF_FALSE;
 	ctx->insert_pssh = GF_FALSE;
+
+
+
+    ////////////////////////////////////////////////////////////////////////
+    //push emsg boxes once the segment is started
+//    GF_Err gf_isom_set_emsg(GF_ISOFile *movie, u8 *data, u32 size);
+
+//	const GF_PropertyValue *emsg = gf_filter_pck_get_property_str(pck, "grp_EMSG");
+//	if (emsg && (emsg->type==GF_PROP_DATA) && emsg->value.data.ptr) {
+//		gf_isom_set_emsg(ctx->file, emsg->value.data.ptr, emsg->value.data.size);
+//	}
+
+    // ADARVE
+    // TODO: insert pending emsg boxes if any.
+//    if (pck) {
+//        const GF_PropertyValue *emsg = gf_filter_pck_get_property_str(pck, "id3");
+//        if (emsg) {
+//            GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_start_fragment: has ID3 properties\n"))
+//        }
+//        if (emsg && (emsg->type==GF_PROP_DATA) && emsg->value.data.ptr) {
+//            GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    mp4_mux_start_fragment: ID3 found: %llu", emsg->value.data.size))
+//            gf_isom_set_emsg(ctx->file, emsg->value.data.ptr, emsg->value.data.size);
+//        }
+//    }
+
+//    if (gf_list_count(ctx->pending_id3_messages) > 0) {
+//        // pop the first ID3 tag to insert
+////        const GF_PropertyValue* id3_prop = gf_list_pop_front(ctx->pending_id3_messages);
+////        GF_FilterPacket* id3_pck = gf_list_pop_front(ctx->pending_id3_messages);
+////        const GF_PropertyValue* id3_prop = gf_filter_pck_get_property_str(id3_pck, "id3");
+////
+////        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_start_fragment: inserting ID3 tag in: %s, size: %u\n", ctx->seg_name, id3_prop->value.data.size))
+////        gf_isom_set_emsg(ctx->file, id3_prop->value.data.ptr, id3_prop->value.data.size);
+////        gf_filter_pck_unref(id3_pck);
+//
+//        // FIXME: who releases the memory of this emsg?
+//        GF_EventMessageBox* emsg = gf_list_pop_front(ctx->pending_id3_messages);
+//        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_start_fragment: inserting EMSG box tag in: %s\n", ctx->seg_name))
+////        gf_isom_set_emsg(ctx->file, id3_prop->value.data.ptr, id3_prop->value.data.size);
+//        gf_list_add(ctx->file->emsgs, emsg);
+//    }
+
+    while (gf_list_count(ctx->pending_id3_messages) > 0) {
+        // FIXME: see gf_isom_write_styp
+        GF_EventMessageBox* emsg = gf_list_pop_front(ctx->pending_id3_messages);
+        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_start_fragment: inserting EMSG into MOOF in: %s pending: %d\n", ctx->seg_name, gf_list_count(ctx->pending_id3_messages)))
+
+        if (!ctx->file->moof->emsgs) {
+            ctx->file->moof->emsgs = gf_list_new();
+        }
+		gf_list_add(ctx->file->moof->emsgs, emsg);
+    }
+
 	return GF_OK;
 }
 
@@ -6322,6 +6390,7 @@ GF_Err mp4mx_reload_output(GF_MP4MuxCtx *ctx)
 
 static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 {
+    int has_id3 = 0;
 #ifndef GPAC_DISABLE_ISOM_FRAGMENTS
 	GF_Err e = GF_OK;
 	u32 nb_eos, nb_done, nb_suspended, i, count;
@@ -6366,6 +6435,14 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 			u32 orig_frag_bounds=0;
 			GF_FilterPacket *pck = gf_filter_pid_get_packet(tkw->ipid);
 
+            if (pck){
+                const GF_PropertyValue* id3_prop = gf_filter_pck_get_property_str(pck, "id3");
+                if (id3_prop) {
+                    has_id3 = 1;
+                    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_process_fragmented has ID3 props: size: %u\n", id3_prop->value.data.size))
+                }
+            }
+
 			if (!pck) {
 				if (gf_filter_pid_is_eos(tkw->ipid)) {
 					tkw->fragment_done = GF_TRUE;
@@ -6383,6 +6460,9 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 				}
 				return GF_OK;
 			}
+
+//            if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6398\n")) }
+
 			if (tkw->aborted) {
 				gf_filter_pid_drop_packet(tkw->ipid);
 				nb_eos++;
@@ -6391,6 +6471,9 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 				if (ctx->dash_mode) ctx->flush_seg = GF_TRUE;
 				break;
 			}
+
+//            if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6408\n")) }
+
 			//we create dash segment only when we know we have a packet, not before this loop.
 			//This allows taking into account flush signals, otherwise we would create empty segments
 			if (ctx->dash_mode && !ctx->segment_started) {
@@ -6399,12 +6482,16 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 				switch (ctx->psshs) {
 				case MP4MX_PSSH_MOOF:
 				case MP4MX_PSSH_BOTH:
+//                    if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6418\n")) }
 					ctx->insert_pssh = GF_TRUE; break;
 				default:
+//                    if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6421\n")) }
 					ctx->insert_pssh = GF_FALSE; break;
 				}
 				gf_isom_start_segment(ctx->file, ctx->single_file ? NULL : "_gpac_isobmff_redirect", GF_FALSE);
 			}
+
+//            if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6427\n")) }
 
 			cts = gf_filter_pck_get_cts(pck);
 
@@ -6417,12 +6504,16 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 					gf_filter_pid_drop_packet(tkw->ipid);
 					ctx->flush_seg = GF_TRUE;
 					tkw->next_seg_cts = tkw->cts_next;
+//                    if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6440\n")) }
 					break;
 				}
 				GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[MuxIsom] Packet with no CTS assigned, cannot store to track, ignoring\n"));
 				gf_filter_pid_drop_packet(tkw->ipid);
+//                if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6445\n")) }
 				continue;
 			}
+
+//            if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6449\n")) }
 
 			p = gf_filter_pck_get_property(pck, GF_PROP_PCK_FRAG_START);
 			if (p) {
@@ -6444,6 +6535,8 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 					}
 				}
 			}
+
+//            if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6472\n")) }
 
 			//get dash/file segment number
 			p = gf_filter_pck_get_property(pck, GF_PROP_PCK_FILENUM);
@@ -6469,23 +6562,119 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 				}
 			}
 
+//            if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    6498: fragment started: %d\n", ctx->fragment_started)) }
 
-			if (!ctx->fragment_started) {
+            ///////////////////////////////////////////////
+            // ID3 tag processing
+            //
+            // Fetch the property from the input packet, if any, insert it in the pending_id3_messages list
+            const GF_PropertyValue *id3_prop = gf_filter_pck_get_property_str(pck, "id3");
+            if (id3_prop) {
+//                GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("pushing ID3 tag for later insertion: %u\n", id3_prop->value.data.size))
+//                gf_list_add(ctx->pending_id3_messages, id3_prop);
+////                gf_list_add(ctx->pending_id3_messages, pck);
+////                gf_filter_pck_is_blocking_ref()
+//                // FIXME: ADARVE: or make a copy of the ID3 prop
+//                if (gf_filter_pck_ref_props(&pck) != GF_OK) {
+//                    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("Error referencing packet properties\n"))
+//                }
+
+                // create a new emsg box and insert it in the pending id3 message list
+//                GF_EventMessageBox* emsg = (GF_EventMessageBox*)emsg_box_new();
+
+                // create a bitstream reader to gather the metadata written in for the ID3 tag.
+                // See m2tsdmx_on_event() method, the case GF_M2TS_EVT_ID3 to see the write ordering
+                GF_BitStream* prop_reader = gf_bs_new(id3_prop->value.data.ptr, id3_prop->value.data.size, GF_BITSTREAM_READ);
+
+
+
+                GF_EventMessageBox * emsg = (GF_EventMessageBox*)gf_isom_box_new(GF_ISOM_BOX_TYPE_EMSG);
+                emsg->version = 1;
+                emsg->timescale = gf_bs_read_u32(prop_reader);;
+                emsg->presentation_time_delta = gf_bs_read_u64(prop_reader);;
+                emsg->event_duration = 0xFFFF;
+                emsg->event_id = 0;
+
+                emsg->scheme_id_uri = (char*) gf_malloc(29);
+                strcpy(emsg->scheme_id_uri, "https://aomedia.org/emsg/ID3");
+
+                emsg->value =  (char*) gf_malloc(23);
+                strcpy(emsg->value, "www.nielsen.com:id3:v1");
+
+                emsg->message_data_size = 271;
+                emsg->message_data = (u8*) gf_malloc(emsg->message_data_size);
+
+                // gf_bs_read_data should read exactly emsg->message_data_size bytes
+                u32 bytes_read = gf_bs_read_data(prop_reader, emsg->message_data, emsg->message_data_size);
+                if (bytes_read != emsg->message_data_size) {
+                    GF_LOG(GF_LOG_ERROR, GF_LOG_FILTER, ("Got less bytes than expected when reading ID3 data, expecting %u, got %u\n", emsg->message_data_size, bytes_read))
+                }
+
+                // free the bitstream reader
+                gf_bs_del(prop_reader);
+
+                u32 insert_emsg = GF_TRUE;
+                for (int j = 0; j < gf_list_count(ctx->pending_id3_messages); ++j) {
+                    GF_EventMessageBox* pending = gf_list_get(ctx->pending_id3_messages, j);
+                    if (pending->presentation_time_delta == emsg->presentation_time_delta) {
+                        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("FOUND EXISTING EMSG\n"))
+                        insert_emsg = GF_FALSE;
+                        break;
+                    }
+                }
+
+                if (insert_emsg == GF_TRUE) {
+                    gf_list_add(ctx->pending_id3_messages, emsg);
+                }
+
+//                if (!ctx->file->emsgs) {
+//                    ctx->file->emsgs = gf_list_new();
+//                } else {
+//
+//                    // clear the list from all old boxes. FIXME: super machete
+//                    while (1) {
+//                        GF_Box* box = gf_list_pop_front(ctx->file->emsgs);
+//                        if (!box) {
+//                            break;
+//                        }
+//                        gf_isom_box_del(box);
+//                    }
+//
+//                }
+//
+//                gf_list_add(ctx->file->emsgs, emsg);
+            }
+
+            // If the current segment has not been started, start it, and insert the first ID3 tag from the
+            // list, which can be the one we just inserted above
+            if (!ctx->fragment_started) {
+
+                if (has_id3 > 0) {
+                    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_process_fragmented: fragment not started\n"))
+                }
+
 				e = mp4_mux_start_fragment(ctx, orig_frag_bounds ? pck : NULL);
-				if (e) return e;
+				if (e) {
+                    return e;
+                }
 
 				//push emsg boxes once the segment is started
-				GF_Err gf_isom_set_emsg(GF_ISOFile *movie, u8 *data, u32 size);
+//				GF_Err gf_isom_set_emsg(GF_ISOFile *movie, u8 *data, u32 size);
 
-				const GF_PropertyValue *emsg = gf_filter_pck_get_property_str(pck, "grp_EMSG");
-				if (emsg && (emsg->type==GF_PROP_DATA) && emsg->value.data.ptr) {
-					gf_isom_set_emsg(ctx->file, emsg->value.data.ptr, emsg->value.data.size);
-				}
-
-				emsg = gf_filter_pck_get_property_str(pck, "id3");
-				if (emsg && (emsg->type==GF_PROP_DATA) && emsg->value.data.ptr) {
-					gf_isom_set_emsg(ctx->file, emsg->value.data.ptr, emsg->value.data.size);
-				}
+//				const GF_PropertyValue *emsg = gf_filter_pck_get_property_str(pck, "grp_EMSG");
+//				if (emsg && (emsg->type==GF_PROP_DATA) && emsg->value.data.ptr) {
+//					gf_isom_set_emsg(ctx->file, emsg->value.data.ptr, emsg->value.data.size);
+//				}
+//
+//                // ADARVE
+//				emsg = gf_filter_pck_get_property_str(pck, "id3");
+//                if (emsg) {
+//                    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_process_fragmented: has ID3 properties\n"))
+//                }
+//				if (emsg && (emsg->type==GF_PROP_DATA) && emsg->value.data.ptr) {
+//                    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("    found"))
+//					gf_isom_set_emsg(ctx->file, emsg->value.data.ptr, emsg->value.data.size);
+//				}
 
 				ctx->nb_frags++;
 				if (ctx->dash_mode)
@@ -6735,6 +6924,34 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 				ctx->cloned_sidx = NULL;
 			}
 
+//            if (gf_list_count(ctx->pending_id3_messages) > 0) {
+//                // FIXME: see gf_isom_write_styp
+//                GF_EventMessageBox* emsg = gf_list_pop_front(ctx->pending_id3_messages);
+//                GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_start_fragment: inserting EMSG box tag in: %s\n", ctx->seg_name))
+//
+//                if (!ctx->file->emsgs) {
+//                    ctx->file->emsgs = gf_list_new();
+//                }
+//
+////                if (!ctx->file->emsgs) {
+////                    ctx->file->emsgs = gf_list_new();
+////                } else {
+////
+////                    // clear the list from all old boxes. FIXME: super machete
+////                    while (1) {
+////                        GF_Box* box = gf_list_pop_front(ctx->file->emsgs);
+////                        if (!box) {
+////                            break;
+////                        }
+////                        gf_isom_box_del(box);
+////                    }
+////
+////                }
+//
+//                gf_list_add(ctx->file->emsgs, emsg);
+//            }
+
+            if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("MUX_ISOM: 6930: calling gf_isom_close_segment %s\n", ctx->seg_name)) }
 			e = gf_isom_close_segment(ctx->file, subs_sidx, track_ref_id, ctx->ref_tkw->first_dts_in_seg_plus_one ? ctx->ref_tkw->first_dts_in_seg_plus_one-1 : 0,
 				ctx->ref_tkw->negctts_shift ? 0 : ctx->ref_tkw->ts_delay,
 				next_ref_ts, ctx->chain_sidx, ctx->ssix, ctx->sseg ? GF_FALSE : is_eos, GF_FALSE, ctx->eos_marker, &idx_start_range, &idx_end_range, &segment_size_in_bytes);
@@ -6770,6 +6987,7 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 		}
 		//cannot flush in DASH mode if using sidx (vod single sidx or live 1 sidx/seg)
 		else if (!ctx->dash_mode || ((ctx->subs_sidx<0) && (ctx->dash_mode<MP4MX_DASH_VOD) && !ctx->cloned_sidx) ) {
+            if (has_id3 > 0) { GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("MUX_ISOM: 6966: calling gf_isom_flush_fragments %s\n", ctx->seg_name)) }
 			gf_isom_flush_fragments(ctx->file, GF_FALSE);
 			flush_refs = GF_TRUE;
 			//if not in dash and EOS marker is set, inject marker after each fragment
@@ -7597,6 +7815,7 @@ void mp4_mux_progress_cbk(void *udta, u64 done, u64 total)
 
 static GF_Err mp4_mux_initialize(GF_Filter *filter)
 {
+    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("mp4_mux_initialize\n"))
 	GF_MP4MuxCtx *ctx = gf_filter_get_udta(filter);
 	gf_filter_set_max_extra_input_pids(filter, -1);
 	ctx->filter = filter;
@@ -7715,6 +7934,11 @@ static GF_Err mp4_mux_initialize(GF_Filter *filter)
 			ctx->nofragdef = GF_TRUE;
 		}
 	}
+
+    if (!ctx->pending_id3_messages) {
+        ctx->pending_id3_messages = gf_list_new();
+    }
+
 	return GF_OK;
 }
 
@@ -8115,6 +8339,7 @@ static void mp4_mux_finalize(GF_Filter *filter)
 	if (ctx->seg_sizes) gf_free(ctx->seg_sizes);
 
 	if (ctx->cur_file_suffix) gf_free(ctx->cur_file_suffix);
+    if (ctx->pending_id3_messages) gf_list_del(ctx->pending_id3_messages);
 
 }
 

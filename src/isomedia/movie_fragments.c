@@ -1430,6 +1430,7 @@ static GF_Err gf_isom_write_styp(GF_ISOFile *movie, Bool last_segment)
 	}
 
 	if (movie->emsgs) {
+        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("STYP has EMSG\n"))
 		while (1) {
 			GF_Box *b = gf_list_pop_front(movie->emsgs);
 			if (!b) break;
@@ -3431,24 +3432,61 @@ u32 gf_isom_get_next_moof_number(GF_ISOFile *movie)
 	return 0;
 }
 
+//GF_EXPORT
+//GF_Err gf_isom_set_emsg(GF_ISOFile *movie, u8 *data, u32 size)
+//{
+//    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("gf_isom_set_emsg\n"))
+//	if (!movie || !data) return GF_BAD_PARAM;
+//#ifndef GPAC_DISABLE_ISOM_FRAGMENTS
+//	if (!movie->moof) return GF_BAD_PARAM;
+//
+//	GF_BitStream *bs = gf_bs_new(data, size, GF_BITSTREAM_READ);
+//	while (gf_bs_available(bs)) {
+//		GF_Box *emsg;
+//		GF_Err e = gf_isom_box_parse(&emsg, bs);
+//		if (e) break;
+//
+//		if (!movie->moof->emsgs) movie->moof->emsgs = gf_list_new();
+//		gf_list_add(movie->moof->emsgs, emsg);
+//	}
+//	gf_bs_del(bs);
+//#endif
+//	return GF_OK;
+//}
+
+GF_EXPORT
 GF_Err gf_isom_set_emsg(GF_ISOFile *movie, u8 *data, u32 size)
 {
-	if (!movie || !data) return GF_BAD_PARAM;
-#ifndef GPAC_DISABLE_ISOM_FRAGMENTS
-	if (!movie->moof) return GF_BAD_PARAM;
+    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("gf_isom_set_emsg\n"))
+    if (!movie || !data) {
+        return GF_BAD_PARAM;
+    }
 
-	GF_BitStream *bs = gf_bs_new(data, size, GF_BITSTREAM_READ);
-	while (gf_bs_available(bs)) {
-		GF_Box *emsg;
-		GF_Err e = gf_isom_box_parse(&emsg, bs);
-		if (e) break;
+    #ifndef GPAC_DISABLE_ISOM_FRAGMENTS
+    if (!movie->moof) {
+        return GF_BAD_PARAM;
+    }
 
-		if (!movie->moof->emsgs) movie->moof->emsgs = gf_list_new();
-		gf_list_add(movie->moof->emsgs, emsg);
-	}
-	gf_bs_del(bs);
-#endif
-	return GF_OK;
+    GF_BitStream *bs = gf_bs_new(data, size, GF_BITSTREAM_READ);
+//    while (gf_bs_available(bs)) {
+//        GF_Box *emsg;
+//        GF_Err e = gf_isom_box_parse(&emsg, bs);
+//
+//        if (e) {
+//            const char* err_str = gf_error_to_string(e);
+//            GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("Error parsing ESMG box: %s\n", err_str))
+//            break;
+//        }
+//
+//        if (!movie->emsgs) {
+//            movie->emsgs = gf_list_new();
+//        }
+//        gf_list_add(movie->emsgs, emsg);
+//    }
+
+    gf_bs_del(bs);
+    #endif
+return GF_OK;
 }
 
 
