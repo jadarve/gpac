@@ -8568,13 +8568,13 @@ static GF_Err dasher_process(GF_Filter *filter)
 				assert(ds->period == ctx->current_period);
 				pck = gf_filter_pid_get_packet(ds->ipid);
 
-                // ADARVE: here we have ID3 props
-                if (pck) {
-                    const GF_PropertyValue* id3_prop = gf_filter_pck_get_property_str(pck, "id3");
-                    if (id3_prop) {
-                        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("dasher_process: has ID3 properties\n"))
-                    }
-                }
+//                // ADARVE: here we have ID3 props
+//                if (pck) {
+//                    const GF_PropertyValue* id3_prop = gf_filter_pck_get_property_str(pck, "id3");
+//                    if (id3_prop) {
+//                        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("dasher_process: has ID3 properties\n"))
+//                    }
+//                }
 
 				//we may change period after a packet fetch (reconfigure of input pid)
 				if ((ds->period != ctx->current_period) || ds->request_period_switch) {
@@ -9445,11 +9445,11 @@ static GF_Err dasher_process(GF_Filter *filter)
 
 				//merge all props
 				gf_filter_pck_merge_properties(pck, dst);
-                // ADARVE
-                const GF_PropertyValue* id3_prop = gf_filter_pck_get_property_str(dst, "id3");
-                if (id3_prop) {
-                    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("dasher dst packet has ID3 props after merge props\n"))
-                }
+//                // ADARVE
+//                const GF_PropertyValue* id3_prop = gf_filter_pck_get_property_str(dst, "id3");
+//                if (id3_prop) {
+//                    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("dasher dst packet has ID3 props after merge props\n"))
+//                }
 
 				//we have ts offset, use computed cts and dts
 				if (ds->ts_offset) {
@@ -9566,11 +9566,11 @@ static GF_Err dasher_process(GF_Filter *filter)
 			}
 			//send packet
 			if (dst) {
-                // ADARVE
-                const GF_PropertyValue* id3_prop = gf_filter_pck_get_property_str(dst, "id3");
-                if (id3_prop) {
-                    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("dasher dst packet has ID3 props\n"))
-                }
+//                // ADARVE
+//                const GF_PropertyValue* id3_prop = gf_filter_pck_get_property_str(dst, "id3");
+//                if (id3_prop) {
+//                    GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("dasher dst packet has ID3 props\n"))
+//                }
                 gf_filter_pck_send(dst);
             }
 

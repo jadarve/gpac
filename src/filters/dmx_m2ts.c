@@ -644,7 +644,6 @@ static void m2tdmx_merge_props(GF_FilterPid *pid, GF_M2TS_ES *stream, GF_FilterP
 					continue;
 			}
 
-            GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("m2tdmx_merge_props: prop szID: %s\n", szID))
 			gf_filter_pck_set_property_dyn(pck, szID, &PROP_DATA_NO_COPY(p->data, p->len));
 			gf_free(p);
 		}
@@ -1144,7 +1143,7 @@ static void m2tsdmx_on_event(GF_M2TS_Demuxer *ts, u32 evt_type, void *param)
 	break;
 	case GF_M2TS_EVT_ID3:
 	{
-        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("DMX_M2TS: ID3 event\n"))
+//        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("DMX_M2TS: ID3 event\n"))
 		GF_M2TS_PES_PCK *pck = (GF_M2TS_PES_PCK*)param;
 		GF_BitStream *bs;
 		GF_M2TS_Prop *t;
@@ -1173,8 +1172,8 @@ static void m2tsdmx_on_event(GF_M2TS_Demuxer *ts, u32 evt_type, void *param)
 			gf_bs_get_content(bs, &t->data, &t->len);
 			gf_bs_del(bs);
 
-            const char* opid_name = gf_filter_pid_get_name(opid);
-            GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("DMX_M2TS: ID3 event: PTS: %lu, data length: %d PID: %s\n", pck->PTS, pck->data_len, opid_name))
+//            const char* opid_name = gf_filter_pid_get_name(opid);
+//            GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("DMX_M2TS: ID3 event: PTS: %lu, data length: %d PID: %s\n", pck->PTS, pck->data_len, opid_name))
 
 			if (!es->props) {
 				es->props = gf_list_new();

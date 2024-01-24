@@ -1430,7 +1430,6 @@ static GF_Err gf_isom_write_styp(GF_ISOFile *movie, Bool last_segment)
 	}
 
 	if (movie->emsgs) {
-        GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("STYP has EMSG\n"))
 		while (1) {
 			GF_Box *b = gf_list_pop_front(movie->emsgs);
 			if (!b) break;

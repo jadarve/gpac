@@ -856,12 +856,6 @@ restart:
 				gf_filter_pck_set_byte_offset(dst_pck, ctx->byte_offset + ctx->hdr.hdr_size);
 			}
 
-            // check if the id3 property exists before sending the packet
-            const GF_PropertyValue* p = gf_filter_pck_get_property_str(pck, "id3");
-            if (p) {
-                GF_LOG(GF_LOG_ERROR, GF_LOG_APP, ("rfadts: has ID3 properties\n"))
-            }
-
 			gf_filter_pck_send(dst_pck);
 		}
 		adts_dmx_update_cts(ctx);
