@@ -6591,7 +6591,7 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
                 emsg->version = 1;
                 emsg->timescale = gf_bs_read_u32(prop_reader);;
                 emsg->presentation_time_delta = gf_bs_read_u64(prop_reader);;
-                emsg->event_duration = 0xFFFF;
+                emsg->event_duration = 0xFFFFFFFF;
                 emsg->event_id = 0;
 
                 emsg->scheme_id_uri = (char*) gf_malloc(29);
