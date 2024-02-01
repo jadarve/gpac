@@ -6589,7 +6589,11 @@ static GF_Err mp4_mux_process_fragmented(GF_MP4MuxCtx *ctx)
 
                 GF_EventMessageBox * emsg = (GF_EventMessageBox*)gf_isom_box_new(GF_ISOM_BOX_TYPE_EMSG);
                 emsg->version = 1;
-                emsg->timescale = gf_bs_read_u32(prop_reader);;
+
+                // read the timescale attribute, but do not use it. Instead, used hardcoded value 90000.
+                gf_bs_read_u32(prop_reader);
+
+                emsg->timescale = 90000;
                 emsg->presentation_time_delta = gf_bs_read_u64(prop_reader);;
                 emsg->event_duration = 0xFFFFFFFF;
                 emsg->event_id = 0;
