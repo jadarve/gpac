@@ -131,6 +131,10 @@ static u32 gf_m2ts_reframe_default(GF_M2TS_Demuxer *ts, GF_M2TS_PES *pes, Bool s
 	pck.stream = pes;
 	ts->on_event(ts, GF_M2TS_EVT_PES_PCK, &pck);
 	/*we consumed all data*/
+
+	if (pes->pid == 65) {
+		GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("Processing PID 67\n"));
+	}
 	return 0;
 }
 
@@ -1555,6 +1559,10 @@ static void gf_m2ts_process_pmt(GF_M2TS_Demuxer *ts, GF_M2TS_SECTION_ES *pmt, GF
 							break;
 						case GF_M2TS_RA_STREAM_AV1:
 							es->stream_type = GF_M2TS_VIDEO_AV1;
+							break;
+
+						case GF_M2TS_RA_STREAM_SRT:
+							es->stream_type = GF_M2TS_SRT_SUBTITLE;
 							break;
 
 						case GF_M2TS_RA_STREAM_GPAC:

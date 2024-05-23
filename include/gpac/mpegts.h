@@ -294,6 +294,7 @@ typedef enum
 	GF_M2TS_DVB_VBI					= 0x153,
 	GF_M2TS_DVB_SUBTITLE			= 0x154,
 	GF_M2TS_METADATA_ID3_HLS		= 0x155,
+	GF_M2TS_SRT_SUBTITLE            = 0x156,
 
 } GF_M2TSStreamType;
 
@@ -311,6 +312,7 @@ enum
 	GF_M2TS_RA_STREAM_OPUS	= GF_4CC('O','p','u','s'),
 	GF_M2TS_RA_STREAM_DOVI	= GF_4CC('D','O','V','I'),
 	GF_M2TS_RA_STREAM_AV1	= GF_4CC('A','V','0','1'),
+	GF_M2TS_RA_STREAM_SRT   = GF_4CC('S','R','T',' '),
 
 	GF_M2TS_RA_STREAM_GPAC	= GF_4CC('G','P','A','C')
 };

@@ -394,6 +394,13 @@ static void m2tsdmx_declare_pid(GF_M2TSDmxCtx *ctx, GF_M2TS_PES *stream, GF_ESD 
 			codecid = GF_CODECID_DVB_TELETEXT;
 			stream->flags |= GF_M2TS_ES_FULL_AU;
 			break;
+		case GF_M2TS_SRT_SUBTITLE:
+			GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] SRT subtitles detected\n"));
+			stype = GF_STREAM_TEXT;
+			codecid = GF_CODECID_SIMPLE_TEXT;
+			stream->flags |= GF_M2TS_ES_FULL_AU;
+			gf_m2ts_set_pes_framing((GF_M2TS_PES *)stream, GF_M2TS_PES_FRAMING_DEFAULT);
+			break;
 		default:
 			GF_LOG(GF_LOG_WARNING, GF_LOG_CONTAINER, ("[M2TSDmx] Stream type 0x%02X not supported - ignoring pid\n", stream->stream_type));
 			return;
@@ -639,6 +646,8 @@ static void m2tsdmx_send_packet(GF_M2TSDmxCtx *ctx, GF_M2TS_PES_PCK *pck)
 
 	u8 *ptr = pck->data;
 	u32 len = pck->data_len;
+
+	GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[M2TSDmx] Sending packet %u bytes\n", len));
 
 	//skip dataID and stream ID
 	if (pck->stream->stream_type==GF_M2TS_DVB_SUBTITLE) {

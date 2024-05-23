@@ -984,12 +984,16 @@ static GF_Err txtin_process_srt(GF_Filter *filter, GF_TXTIn *ctx, GF_FilterPacke
 		Bool is_empty = GF_FALSE;
 		char *sOK = gf_text_get_utf8_line(szLine, 2048, ctx->src, ctx->unicode_type);
 
+		// GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("TXTIN: process_srt: first line: %s\n", sOK));
+
 		if (sOK) {
 			REM_TRAIL_MARKS(szLine, "\r\n\t ")
 
 			if (ctx->unicode_type<=1) is_empty = strlen(szLine) ? GF_FALSE : GF_TRUE;
 			else is_empty =  (!szLine[0] && !szLine[1]) ? GF_TRUE : GF_FALSE;
 		}
+
+		GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[TXTIn] process_srt: after trimming: %s\n", sOK));
 
 		if (!sOK || is_empty) {
 			u32 utf_inc = (ctx->unicode_type<=1) ? 1 : 2;
@@ -1056,6 +1060,7 @@ force_line:
 			}
 			ctx->curLine = line;
 			ctx->state = 1;
+			GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("TXTIN: state 0: line %d next state %d\n", line, ctx->state));
 			break;
 		case 1:
 			if (sscanf(szLine, "%u:%u:%u,%u --> %u:%u:%u,%u", &sh, &sm, &ss, &sms, &eh, &em, &es, &ems) != 8) {
@@ -1077,6 +1082,8 @@ force_line:
 			}
 
 			ctx->end = (3600*eh + 60*em + es)*1000 + ems;
+
+			GF_LOG(GF_LOG_ERROR, GF_LOG_CONTAINER, ("[TXTIn] process_srt: state 1 %llu --> %llu\n", ctx->start, ctx->end));
 			/*make stream start at 0 by inserting a fake AU*/
 			if (ctx->first_samp && (ctx->start > 0)) {
 				txtin_process_send_text_sample(ctx, ctx->samp, 0, (u32) ctx->start, GF_TRUE);
